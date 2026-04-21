@@ -10,7 +10,9 @@ const Field = require('./models/Field');
 const User = require('./models/User');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "https://cropsense-xam6.onrender.com"
+}));
 app.use(express.json());
 // Serve static files from the current directory
 app.use(express.static(__dirname));

@@ -254,7 +254,7 @@
 
         async function fetchInitialField() {
             try {
-                const res = await fetch('http://localhost:5000/api/fields');
+                const res = await fetch('/api/fields');
                 allFields = await res.json();
                 
                 if (allFields && allFields.length > 0) {
@@ -344,7 +344,7 @@
                 document.getElementById('simRain').value = currentRain;
                 
                 // Save this Real-Time Weather globally to the Database so all pages use it!
-                fetch(`http://localhost:5000/api/fields/${field._id}/environment`, {
+                fetch(`/api/fields/${field._id}/environment`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ temperature: currentTemp, humidity: currentHum })
@@ -394,7 +394,7 @@
                 
                 // Save simulated environment to MongoDB
                 if(fieldData && fieldData._id) {
-                    fetch(`http://localhost:5000/api/fields/${fieldData._id}/environment`, {
+                    fetch(`/api/fields/${fieldData._id}/environment`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ temperature: temp, humidity: water })
@@ -448,7 +448,7 @@
             };
 
             try {
-                const res = await fetch('http://localhost:5000/api/ai/ndvi-insights', {
+                const res = await fetch('/api/ai/ndvi-insights', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)

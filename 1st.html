@@ -194,7 +194,7 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:5000/api';
+        const API_BASE = '/api';
 
         let allFieldsData = [];
 
@@ -223,7 +223,7 @@
                 btn.style.transform = "scale(1)";
                 
                 try {
-                    const res = await fetch('http://localhost:5000/api/ai/voice-assistant', {
+                    const res = await fetch('/api/ai/voice-assistant', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ question: transcript, fieldsData: allFieldsData })
                     });

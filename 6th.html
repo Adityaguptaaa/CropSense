@@ -115,7 +115,7 @@
             btn.disabled = true;
 
             try {
-                const res = await fetch('http://localhost:5000/api/ai/plant-doctor', {
+                const res = await fetch('/api/ai/plant-doctor', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ imageBase64: base64Image })

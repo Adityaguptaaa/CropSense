@@ -155,7 +155,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function fetchAIAlerts() {
     try {
-        const res = await fetch('http://localhost:5000/api/ai/smart-alerts');
+        const res = await fetch('/api/ai/smart-alerts');
         const alerts = await res.json();
         
         const badge = document.getElementById('globalAlertBadge');

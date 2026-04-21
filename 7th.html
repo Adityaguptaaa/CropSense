@@ -122,7 +122,7 @@
             document.getElementById('resultBox').style.display = 'none';
 
             try {
-                const res = await fetch('http://localhost:5000/api/ai/market-predictor', {
+                const res = await fetch('/api/ai/market-predictor', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ cropType: crop })
