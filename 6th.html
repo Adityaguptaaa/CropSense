@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Plant Doctor | CropSense</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --primary-gradient: linear-gradient(135deg, #10b981, #059669);
+            --bg-main: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --danger: #ef4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        body { background: var(--bg-main); color: var(--text-main); }
+        
+        nav { background: var(--card-bg); padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1000; }
+        .logo { font-size: 1.5rem; font-weight: 700; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-links { display: flex; gap: 30px; }
+        .nav-links a { text-decoration: none; color: var(--text-muted); font-weight: 500; transition: all 0.3s; padding: 8px 12px; border-radius: 8px; }
+        .nav-links a:hover, .nav-links a.active { color: var(--primary); background: rgba(16, 185, 129, 0.1); }
+
+        .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        .glass-card { background: var(--card-bg); border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; text-align: center; }
+        
+        .upload-area { border: 2px dashed #cbd5e1; border-radius: 15px; padding: 50px 20px; cursor: pointer; transition: 0.3s; background: #f8fafc; margin-bottom: 20px; }
+        .upload-area:hover { border-color: var(--primary); background: #f0fdf4; }
+        
+        #previewImage { max-width: 100%; max-height: 300px; border-radius: 10px; display: none; margin: 0 auto 20px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
+        .btn-scan { background: var(--primary-gradient); color: white; border: none; padding: 15px 30px; font-size: 1.1rem; font-weight: 600; border-radius: 10px; cursor: pointer; width: 100%; transition: 0.3s; display: none; }
+        .btn-scan:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(16, 185, 129, 0.3); }
+        .btn-scan:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+        .result-box { margin-top: 30px; text-align: left; padding: 20px; background: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0; display: none; }
+        .result-box h3 { color: var(--primary-dark); margin-bottom: 10px; }
+        .result-box div { color: var(--text-main); line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="1st.html" class="logo" style="text-decoration:none;">🌾 CropSense</a>
+        <div class="nav-links">
+            <a href="1st.html">Dashboard</a>
+            <a href="2nd.html">Field Analysis</a>
+            <a href="3rd.html">Manage Fields</a>
+            <a href="4th.html">History</a>
+            <a href="5th.html">Satellite AI</a>
+            <a href="6th.html" class="active">Plant Doctor</a>
+            <a href="7th.html">Market AI</a>
+            <a href="8th.html">Community Hub</a>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center; position: relative;">
+            <a href="1st.html" style="text-decoration:none; width: 35px; height: 35px; border-radius: 50%; background: #e2e8f0; display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative;">
+                🔔
+            </a>
+            <div style="width: 35px; height: 35px; border-radius: 50%; background: var(--primary-gradient); color: white; display: flex; justify-content: center; align-items: center; font-weight: bold;">AD</div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="glass-card">
+            <h1 style="margin-bottom: 10px; color: var(--primary-dark);">📸 AI Plant Doctor</h1>
+            <p style="color: var(--text-muted); margin-bottom: 30px;">Upload a clear photo of your diseased crop leaf. Our Gemini Vision AI will instantly scan it and prescribe the exact treatment.</p>
+            
+            <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="previewFile()">
+            
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('imageInput').click()">
+                <div style="font-size: 3rem; margin-bottom: 10px;">📤</div>
+                <h3 style="color: var(--secondary);">Tap to Upload Leaf Photo</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Supports JPG, PNG (Max 5MB)</p>
+            </div>
+            
+            <img id="previewImage" src="" alt="Preview">
+            
+            <button class="btn-scan" id="scanBtn" onclick="scanImage()">🔍 Scan & Diagnose with AI</button>
+
+            <div class="result-box" id="resultBox">
+                <h3>🩺 Diagnosis Report</h3>
+                <div id="aiResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let base64Image = null;
+
+        function previewFile() {
+            const file = document.getElementById('imageInput').files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onloadend = function () {
+                    base64Image = reader.result;
+                    document.getElementById('previewImage').src = base64Image;
+                    document.getElementById('previewImage').style.display = 'block';
+                    document.getElementById('uploadArea').style.display = 'none';
+                    document.getElementById('scanBtn').style.display = 'block';
+                    document.getElementById('resultBox').style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function scanImage() {
+            if (!base64Image) return;
+            
+            const btn = document.getElementById('scanBtn');
+            btn.innerHTML = "⏳ Scanning Image (Gemini AI)...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('http://localhost:5000/api/ai/plant-doctor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageBase64: base64Image })
+                });
+                
+                const data = await res.json();
+                
+                document.getElementById('resultBox').style.display = 'block';
+                
+                if (data.error) {
+                    document.getElementById('aiResult').innerHTML = `<span style="color:red;">Error: ${data.error}</span>`;
+                } else {
+                    // Convert markdown bullets to HTML
+                    let htmlText = data.result.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\n/g, '<li>$1</li>');
+                    document.getElementById('aiResult').innerHTML = `<ul>${htmlText}</ul>`;
+                }
+            } catch (err) {
+                document.getElementById('resultBox').style.display = 'block';
+                document.getElementById('aiResult').innerHTML = `<span style="color:red;">Network Error.</span>`;
+            } finally {
+                btn.innerHTML = "🔍 Scan & Diagnose with AI";
+                btn.disabled = false;
+            }
+        }
+    </script>
+    <script src="global-alerts.js"></script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Hub | CropSense</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --secondary: #3b82f6;
+            --bg-main: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        body { background: var(--bg-main); color: var(--text-main); min-height: 100vh; }
+        
+        nav { background: var(--card-bg); padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1000; backdrop-filter: blur(10px); }
+        .logo { font-size: 1.5rem; font-weight: 700; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-decoration: none; }
+        .nav-links { display: flex; gap: 25px; }
+        .nav-links a { text-decoration: none; color: var(--text-muted); font-weight: 500; transition: 0.3s; padding: 8px 12px; border-radius: 8px; font-size: 0.9rem; }
+        .nav-links a:hover, .nav-links a.active { color: var(--primary); background: rgba(16, 185, 129, 0.1); }
+
+        .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        
+        .hub-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
+        .hub-card h2 { margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--text-main); font-size: 1.4rem; }
+        
+        /* Voice AI */
+        .voice-section { grid-column: span 2; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #1e293b, #0f172a); padding: 30px; border-radius: 20px; color: white; position: relative; overflow: hidden; }
+        .voice-section::after { content: '🗣️'; position: absolute; right: -20px; bottom: -20px; font-size: 8rem; opacity: 0.1; }
+        .btn-voice { padding: 15px 30px; background: var(--primary-gradient); color: white; border: none; border-radius: 50px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 1.1rem; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3); transition: 0.3s; }
+        .btn-voice:hover { transform: scale(1.05); }
+        .btn-voice.active { animation: pulse 1.5s infinite; background: var(--danger); }
+        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+
+        /* Community Alerts */
+        .alert-input { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 10px; font-size: 0.9rem; outline: none; }
+        .alert-input:focus { border-color: var(--primary); }
+        .btn-broadcast { width: 100%; padding: 12px; background: var(--danger); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .btn-broadcast:hover { opacity: 0.9; transform: scale(0.98); }
+        .community-list { margin-top: 20px; max-height: 300px; overflow-y: auto; }
+        .comm-alert { padding: 15px; border-radius: 12px; background: #fff5f5; border-left: 4px solid var(--danger); margin-bottom: 10px; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        .comm-alert h4 { font-size: 1rem; color: #991b1b; }
+        .comm-alert p { font-size: 0.85rem; color: #b91c1c; margin: 5px 0; }
+        .comm-meta { font-size: 0.75rem; color: #7f1d1d; opacity: 0.7; }
+
+        /* Calendar */
+        .calendar-list { display: flex; flex-direction: column; gap: 15px; }
+        .milestone { display: flex; gap: 15px; padding: 15px; background: #f8fafc; border-radius: 15px; border-left: 4px solid var(--primary); }
+        .milestone-day { min-width: 60px; font-weight: 700; color: var(--primary); font-size: 1.1rem; }
+        .milestone-info h4 { font-size: 1rem; margin-bottom: 4px; }
+        .milestone-info p { font-size: 0.85rem; color: var(--text-muted); }
+
+        /* Profit Sim */
+        .sim-input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        .sim-select { flex: 1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 12px; outline: none; }
+        .btn-sim { padding: 0 20px; background: var(--primary-gradient); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; }
+        .sim-results { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; display: none; }
+        .sim-box { padding: 15px; border-radius: 15px; text-align: center; }
+        .sim-box.current { background: #f1f5f9; }
+        .sim-box.alt { background: #ecfdf5; border: 2px solid #10b981; }
+        .profit-val { font-size: 1.5rem; font-weight: 700; margin: 10px 0; display: block; }
+
+        .loading-overlay { display: none; text-align: center; padding: 40px; color: var(--text-muted); }
+        .loader-spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #voiceStatus { margin-top: 10px; font-size: 0.9rem; opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="1st.html" class="logo">🌾 CropSense</a>
+        <div class="nav-links">
+            <a href="1st.html">Dashboard</a>
+            <a href="2nd.html">Field Analysis</a>
+            <a href="3rd.html">Manage Fields</a>
+            <a href="4th.html">History</a>
+            <a href="5th.html">Satellite AI</a>
+            <a href="6th.html">Plant Doctor</a>
+            <a href="7th.html">Market AI</a>
+            <a href="8th.html" class="active">Community Hub</a>
+        </div>
+        <div id="navRight" style="display: flex; gap: 15px; align-items: center; position: relative;">
+            <div id="alertIcon"></div>
+            <div style="width: 35px; height: 35px; border-radius: 50%; background: var(--primary-gradient); color: white; display: flex; justify-content: center; align-items: center; font-weight: bold; cursor: pointer;">AD</div>
+        </div>
+    </nav>
+
+    <div class="container">
+
+
+        <!-- Community Alerts -->
+        <div class="hub-card">
+            <h2>🤝 Community Disease Broadcast</h2>
+            <p style="color: var(--text-muted); margin-bottom:15px; font-size:0.9rem;">Alert nearby farmers if you spot a contagious disease.</p>
+            <input type="text" id="alertTitle" class="alert-input" placeholder="Disease Name (e.g. Wheat Rust spotted)">
+            <textarea id="alertMsg" class="alert-input" rows="2" placeholder="Specific location or advice..."></textarea>
+            <button class="btn-broadcast" onclick="broadcastAlert()">🚀 Broadcast Alert to Community</button>
+            
+            <div class="community-list" id="communityList">
+                <div style="text-align: center; color: #94a3b8; padding: 20px;">Fetching local community reports...</div>
+            </div>
+        </div>
+
+        <!-- AI Crop Calendar -->
+        <div class="hub-card">
+            <h2>📅 AI Smart Crop Calendar</h2>
+            <div class="sim-input-group">
+                <select id="fieldSelectCal" class="sim-select">
+                    <option value="">Select a field...</option>
+                </select>
+                <button class="btn-sim" onclick="generateCalendar()">📅 Plan</button>
+            </div>
+            <div id="calendarLoader" class="loading-overlay"><div class="loader-spinner"></div>AI is generating your season plan...</div>
+            <div class="calendar-list" id="calendarList">
+                <div style="text-align: center; color: #94a3b8; padding: 20px;">Select a field to generate your 6-month AI calendar.</div>
+            </div>
+        </div>
+
+        <!-- Profit Simulator -->
+        <div class="hub-card" style="grid-column: span 2;">
+            <h2>📊 Crop Profit Simulator (What If?)</h2>
+            <div class="sim-input-group">
+                <select id="fieldSelectSim" class="sim-select">
+                    <option value="">Current Field...</option>
+                </select>
+                <select id="altCrop" class="sim-select">
+                    <option value="Cotton">Cotton</option>
+                    <option value="Sugar Cane">Sugar Cane</option>
+                    <option value="Soybean">Soybean</option>
+                    <option value="Mustard">Mustard</option>
+                    <option value="Potato">Potato</option>
+                </select>
+                <button class="btn-sim" onclick="runSimulation()">📊 Compare Profit</button>
+            </div>
+            <div id="simLoader" class="loading-overlay"><div class="loader-spinner"></div>AI is calculating market potentials...</div>
+            <div id="simResults" class="sim-results">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script src="global-alerts.js"></script>
+    <script>
+        // Use relative URLs instead of localhost:5000
+        const API_URL = ''; 
+
+        async function loadFields() {
+            try {
+                const res = await fetch(`${API_URL}/api/fields`);
+                const fields = await res.json();
+                const selects = ['fieldSelectCal', 'fieldSelectSim'];
+                selects.forEach(sId => {
+                    const el = document.getElementById(sId);
+                    // Clear first
+                    el.innerHTML = '<option value="">Select a field...</option>';
+                    fields.forEach(f => {
+                        const opt = document.createElement('option');
+                        opt.value = f._id;
+                        opt.textContent = `${f.name} (${f.cropType})`;
+                        el.appendChild(opt);
+                    });
+                });
+            } catch(e) { console.error("Load Fields Error:", e); }
+        }
+
+        async function fetchCommunityAlerts() {
+            try {
+                const res = await fetch(`${API_URL}/api/community/alerts`);
+                const alerts = await res.json();
+                const list = document.getElementById('communityList');
+                if (alerts.length === 0) {
+                    list.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">No community alerts yet. Be the first to help!</div>';
+                    return;
+                }
+                list.innerHTML = alerts.map(a => `
+                    <div class="comm-alert">
+                        <h4>🚨 ${a.title}</h4>
+                        <p>${a.message}</p>
+                        <div class="comm-meta">📍 ${a.location} • By ${a.postedBy} • ${new Date(a.timestamp).toLocaleTimeString()}</div>
+                    </div>
+                `).join('');
+            } catch(e) { console.error("Fetch Alerts Error:", e); }
+        }
+
+        async function broadcastAlert() {
+            const title = document.getElementById('alertTitle').value;
+            const message = document.getElementById('alertMsg').value;
+            if(!title || !message) return alert("Please fill title and message");
+
+            try {
+                const res = await fetch(`${API_URL}/api/community/broadcast`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, message, location: "Local Region" })
+                });
+                if(!res.ok) throw new Error("Post failed");
+                document.getElementById('alertTitle').value = '';
+                document.getElementById('alertMsg').value = '';
+                fetchCommunityAlerts();
+            } catch(e) { alert("Failed to broadcast. Check connection."); }
+        }
+
+        async function generateCalendar() {
+            const fieldId = document.getElementById('fieldSelectCal').value;
+            if(!fieldId) return alert("Select a field first");
+
+            document.getElementById('calendarLoader').style.display = 'block';
+            document.getElementById('calendarList').innerHTML = '';
+
+            try {
+                const res = await fetch(`${API_URL}/api/ai/crop-calendar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fieldId })
+                });
+                const data = await res.json();
+                
+                document.getElementById('calendarLoader').style.display = 'none';
+                document.getElementById('calendarList').innerHTML = data.calendar.map(m => `
+                    <div class="milestone">
+                        <div class="milestone-day">Day ${m.day}</div>
+                        <div class="milestone-info">
+                            <h4>${m.title} <span style="font-size:0.7rem; color:var(--primary); background:rgba(16,185,129,0.1); padding:2px 6px; border-radius:5px;">${m.category}</span></h4>
+                            <p>${m.description}</p>
+                        </div>
+                    </div>
+                `).join('');
+            } catch(e) { 
+                document.getElementById('calendarLoader').style.display = 'none';
+                alert("AI Calendar failed"); 
+            }
+        }
+
+        async function runSimulation() {
+            const fieldId = document.getElementById('fieldSelectSim').value;
+            const alt = document.getElementById('altCrop').value;
+            if(!fieldId) return alert("Select a field first");
+
+            document.getElementById('simLoader').style.display = 'block';
+            document.getElementById('simResults').style.display = 'none';
+
+            try {
+                const res = await fetch(`${API_URL}/api/ai/profit-simulator`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fieldId, alternativeCrop: alt })
+                });
+                const data = await res.json();
+                
+                document.getElementById('simLoader').style.display = 'none';
+                const results = document.getElementById('simResults');
+                results.style.display = 'grid';
+                results.innerHTML = `
+                    <div class="sim-box current">
+                        <p style="font-weight:600;">Current: ${data.current.crop}</p>
+                        <span class="profit-val">₹${data.current.totalProfit.toLocaleString()}</span>
+                        <p style="font-size:0.8rem; color:var(--text-muted);">Profit Estimate</p>
+                    </div>
+                    <div class="sim-box alt">
+                        <p style="font-weight:600; color:var(--primary);">Alternative: ${data.alternative.crop}</p>
+                        <span class="profit-val" style="color:var(--primary);">₹${data.alternative.totalProfit.toLocaleString()}</span>
+                        <p style="font-size:0.8rem; color:var(--text-muted);">Potential Profit</p>
+                    </div>
+                    <div style="grid-column: span 2; padding: 20px; background: #fffbeb; border-radius: 15px; border-left: 5px solid var(--warning);">
+                        <h4 style="color:#92400e; margin-bottom:5px;">💡 AI Verdict: ${data.verdict}</h4>
+                        <p style="font-size:0.9rem; color:#92400e;">${data.analysis}</p>
+                        <p style="margin-top:10px; font-weight:700; color:#b45309;">Extra Profit Potential: +₹${data.extraProfitPossible.toLocaleString()}</p>
+                    </div>
+                `;
+            } catch(e) { 
+                document.getElementById('simLoader').style.display = 'none';
+                alert("Simulation failed"); 
+            }
+        }
+
+
+
+        window.onload = () => {
+            loadFields();
+            fetchCommunityAlerts();
+            setInterval(fetchCommunityAlerts, 30000);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Market Predictor | CropSense</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --primary-gradient: linear-gradient(135deg, #10b981, #059669);
+            --bg-main: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        body { background: var(--bg-main); color: var(--text-main); }
+        
+        nav { background: var(--card-bg); padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1000; }
+        .logo { font-size: 1.5rem; font-weight: 700; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-links { display: flex; gap: 30px; }
+        .nav-links a { text-decoration: none; color: var(--text-muted); font-weight: 500; transition: all 0.3s; padding: 8px 12px; border-radius: 8px; }
+        .nav-links a:hover, .nav-links a.active { color: var(--primary); background: rgba(16, 185, 129, 0.1); }
+
+        .container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: var(--primary-dark); }
+        
+        .grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+        @media(max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        
+        .glass-card { background: var(--card-bg); border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
+        
+        select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 1.1rem; margin-bottom: 20px; outline: none; }
+        
+        .indicator-box { text-align: center; padding: 30px 20px; border-radius: 15px; margin-bottom: 20px; color: white; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .indicator-box.HOLD { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .indicator-box.SELL { background: var(--primary-gradient); }
+        
+        .reason-box { padding: 15px; background: #f8fafc; border-left: 4px solid var(--primary); border-radius: 5px; font-size: 0.95rem; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="1st.html" class="logo" style="text-decoration:none;">🌾 CropSense</a>
+        <div class="nav-links">
+            <a href="1st.html">Dashboard</a>
+            <a href="2nd.html">Field Analysis</a>
+            <a href="3rd.html">Manage Fields</a>
+            <a href="4th.html">History</a>
+            <a href="5th.html">Satellite AI</a>
+            <a href="6th.html">Plant Doctor</a>
+            <a href="7th.html" class="active">Market AI</a>
+            <a href="8th.html">Community Hub</a>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center; position: relative;">
+            <a href="1st.html" style="text-decoration:none; width: 35px; height: 35px; border-radius: 50%; background: #e2e8f0; display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative;">
+                🔔
+            </a>
+            <div style="width: 35px; height: 35px; border-radius: 50%; background: var(--primary-gradient); color: white; display: flex; justify-content: center; align-items: center; font-weight: bold;">AD</div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>📈 Live Market Predictor</h1>
+            <p>Gemini AI powered 7-day crop price forecasting and Hold/Sell recommendations.</p>
+        </div>
+
+        <div class="grid">
+            <div class="glass-card">
+                <h3>Select Crop for Market Analysis</h3>
+                <select id="cropSelect" onchange="fetchMarketData()">
+                    <option value="Wheat">Wheat (Gehu)</option>
+                    <option value="Rice">Rice (Chawal)</option>
+                    <option value="Corn">Corn (Makka)</option>
+                    <option value="Sugarcane">Sugarcane (Ganna)</option>
+                    <option value="Cotton">Cotton (Kapas)</option>
+                </select>
+
+                <div style="height: 350px; width: 100%; position: relative;">
+                    <canvas id="marketChart"></canvas>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <h3 style="margin-bottom: 15px;">AI Verdict</h3>
+                
+                <div id="loadingBox" style="text-align: center; padding: 40px 0; color: var(--text-muted);">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">⏳</div>
+                    Analyzing Market Trends...
+                </div>
+
+                <div id="resultBox" style="display: none;">
+                    <div id="indicatorBox" class="indicator-box HOLD">
+                        <div style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Recommendation</div>
+                        <h1 id="recommendationText" style="font-size: 2.5rem; margin: 0;">HOLD</h1>
+                    </div>
+                    
+                    <h4 style="margin-bottom: 10px;">Reasoning</h4>
+                    <div class="reason-box" id="reasonText">
+                        AI analysis pending...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chartInstance = null;
+
+        async function fetchMarketData() {
+            const crop = document.getElementById('cropSelect').value;
+            
+            document.getElementById('loadingBox').style.display = 'block';
+            document.getElementById('resultBox').style.display = 'none';
+
+            try {
+                const res = await fetch('http://localhost:5000/api/ai/market-predictor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cropType: crop })
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    alert("Error fetching market data: " + data.error);
+                    return;
+                }
+
+                updateUI(data.prices, data.recommendation, data.reason);
+            } catch (err) {
+                console.error(err);
+                alert("Network error.");
+            }
+        }
+
+        function updateUI(prices, recommendation, reason) {
+            document.getElementById('loadingBox').style.display = 'none';
+            document.getElementById('resultBox').style.display = 'block';
+
+            const indBox = document.getElementById('indicatorBox');
+            indBox.className = 'indicator-box ' + recommendation;
+            document.getElementById('recommendationText').innerText = recommendation;
+            document.getElementById('reasonText').innerText = reason;
+
+            const dates = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() + i);
+                dates.push(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+            }
+
+            if (chartInstance) chartInstance.destroy();
+
+            const ctx = document.getElementById('marketChart').getContext('2d');
+            
+            // Set color based on trend
+            const lineColor = prices[6] >= prices[0] ? '#10b981' : '#ef4444';
+            const bgColor = prices[6] >= prices[0] ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Price per Quintal (₹)',
+                        data: prices,
+                        borderColor: lineColor,
+                        backgroundColor: bgColor,
+                        borderWidth: 3,
+                        pointBackgroundColor: lineColor,
+                        pointRadius: 5,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { backgroundColor: '#1e293b', padding: 10, titleFont: { size: 14 } }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: false,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: { 
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize on load
+        window.onload = fetchMarketData;
+    </script>
+    <script src="global-alerts.js"></script>
+</body>
+</html>

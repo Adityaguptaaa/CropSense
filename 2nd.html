@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Field Analysis & Tracker - CropSense</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-body: #f0f4f8;
+            --bg-card: rgba(255, 255, 255, 0.85);
+            --primary: #10b981;
+            --primary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --secondary: #3b82f6;
+            --secondary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: rgba(255, 255, 255, 0.4);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+
+        body {
+            background-color: var(--bg-body);
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(153, 100%, 74%, 0.2) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, hsla(210, 100%, 80%, 0.2) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 50px;
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .logo { font-size: 1.5rem; font-weight: 700; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-links { display: flex; gap: 30px; }
+        .nav-links a { text-decoration: none; color: var(--text-muted); font-weight: 500; padding: 8px 12px; border-radius: 8px; }
+        .nav-links a.active { color: var(--primary); background: rgba(16, 185, 129, 0.1); }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 20px; animation: fadeIn 0.6s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+            margin-bottom: 25px;
+        }
+
+        .top-actions { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .back-btn { text-decoration: none; color: var(--text-muted); font-weight: 500; }
+        
+        .field-title { font-size: 2.2rem; font-weight: 700; letter-spacing: -1px; margin-bottom: 20px; }
+        
+        .overview-stats { display: flex; gap: 40px; margin-bottom: 20px; }
+        .stat-item p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; }
+        .stat-item h3 { font-size: 1.5rem; font-weight: 600; color: var(--text-main); }
+        .btn-action { background: var(--secondary-gradient); color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(59,130,246,0.3); }
+
+        .dashboard-grid { display: grid; grid-template-columns: 350px 1fr 350px; gap: 25px; }
+
+        .section-title { font-size: 1.1rem; color: var(--primary); font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 5px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 5px; color: var(--text-muted); }
+        .form-control { width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.6); border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; }
+        .btn-submit { width: 100%; background: var(--primary-gradient); color: white; border: none; padding: 12px; font-weight: 600; border-radius: 10px; cursor: pointer; }
+
+        .history-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .history-table th { background: rgba(0,0,0,0.03); padding: 10px; text-align: left; color: var(--text-muted); font-weight: 600; }
+        .history-table td { padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+
+        .chart-box { height: 350px; position: relative; width: 100%; }
+
+        .ai-insight { background: linear-gradient(145deg, #f8fafc, #f1f5f9); border-left: 4px solid var(--secondary); padding: 25px; border-radius: 12px; margin-top: 25px; }
+        .ai-insight h3 { display: flex; align-items: center; gap: 8px; font-size: 1.3rem; margin-bottom: 15px; color: var(--secondary); }
+        
+        /* Task Tracker Styles */
+        .task-list { display: flex; flex-direction: column; gap: 12px; }
+        .task-item { display: flex; align-items: flex-start; gap: 12px; background: white; padding: 15px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.05); transition: 0.3s; }
+        .task-item:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .task-item.completed { opacity: 0.6; }
+        .task-item.completed .task-title { text-decoration: line-through; }
+        .task-checkbox { width: 22px; height: 22px; cursor: pointer; accent-color: var(--primary); margin-top: 3px; }
+        .task-info { flex: 1; }
+        .task-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+        .task-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between; }
+        .task-badge { background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; }
+
+        .loader-full { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 50vh; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="1st.html" class="logo" style="text-decoration:none;">🌾 CropSense</a>
+        <div class="nav-links">
+            <a href="1st.html">Dashboard</a>
+            <a href="2nd.html" class="active">Field Analysis</a>
+            <a href="3rd.html">Manage Fields</a>
+            <a href="4th.html">History</a>
+            <a href="5th.html">Satellite AI</a>
+            <a href="6th.html">Plant Doctor</a>
+            <a href="7th.html">Market AI</a>
+            <a href="8th.html">Community Hub</a>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center; position: relative;">
+            <a href="1st.html" style="text-decoration:none; width: 35px; height: 35px; border-radius: 50%; background: #e2e8f0; display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative;">
+                🔔
+            </a>
+            <div style="width: 35px; height: 35px; border-radius: 50%; background: var(--primary-gradient); color: white; display: flex; justify-content: center; align-items: center; font-weight: bold;">AD</div>
+        </div>
+    </nav>
+
+    <div class="container" id="mainContent">
+        <div class="loader-full"><h2>Loading Field Data...</h2></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        let currentField = null;
+        let chartInstance = null;
+
+        async function initFieldData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            let fieldId = urlParams.get('id');
+
+            try {
+                if (!fieldId) {
+                    const resAll = await fetch(`${API_BASE}/fields`);
+                    const fields = await resAll.json();
+                    if(fields.length === 0) return document.getElementById('mainContent').innerHTML = `<div class="loader-full"><h2>No Fields Found</h2></div>`;
+                    fieldId = fields[0]._id;
+                }
+                const res = await fetch(`${API_BASE}/fields/${fieldId}`);
+                if (!res.ok) throw new Error('Field not found');
+                currentField = await res.json();
+                renderUI();
+            } catch (err) {
+                document.getElementById('mainContent').innerHTML = `<div class="loader-full" style="color: red;"><h2>⚠️ Connection Error</h2></div>`;
+            }
+        }
+
+        function renderUI() {
+            // History Table
+            let historyRows = '';
+            const recentHistory = [...currentField.history].reverse().slice(0, 5);
+            if (recentHistory.length === 0) historyRows = '<tr><td colspan="4">No data yet.</td></tr>';
+            else {
+                recentHistory.forEach(h => {
+                    historyRows += `<tr><td>${new Date(h.date).toLocaleDateString()}</td><td>${h.temperature}°C</td><td>${h.humidity}%</td><td style="text-transform:capitalize;">${h.soilMoisture}</td></tr>`;
+                });
+            }
+
+            // Tasks Render
+            let tasksHtml = '';
+            if (!currentField.tasks || currentField.tasks.length === 0) {
+                tasksHtml = `
+                    <div style="text-align:center; padding: 20px;">
+                        <p style="color:var(--text-muted); margin-bottom:15px; font-size:0.9rem;">No AI Scheduler plan generated yet.</p>
+                        <button class="btn-action" style="width:100%; background:var(--primary-gradient);" onclick="generatePlan(this)">✨ Generate AI Schedule Plan</button>
+                    </div>`;
+            } else {
+                tasksHtml = `<div class="task-list">`;
+                currentField.tasks.forEach(t => {
+                    const d = new Date(t.dueDate).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+                    tasksHtml += `
+                        <div class="task-item ${t.completed ? 'completed' : ''}">
+                            <input type="checkbox" class="task-checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t._id}')">
+                            <div class="task-info">
+                                <div class="task-title">${t.title}</div>
+                                <div class="task-meta"><span>Due: ${d}</span> <span class="task-badge">${t.category}</span></div>
+                            </div>
+                        </div>`;
+                });
+                tasksHtml += `</div>`;
+            }
+
+            const html = `
+                <div class="top-actions"><a href="1st.html" class="back-btn">← Back</a></div>
+                <h1 class="field-title">${currentField.name} <span style="color:var(--text-muted); font-size:1.2rem;">| ${currentField.cropType.toUpperCase()}</span></h1>
+                
+                <div class="glass-card">
+                    <div class="overview-stats" style="gap: 20px; flex-wrap: wrap;">
+                        <div class="stat-item"><p>Stage</p><h3>🌱 ${currentField.stage}</h3></div>
+                        <div class="stat-item"><p>Temp</p><h3>🌡️ ${currentField.temperature}°C</h3></div>
+                        <div class="stat-item"><p>Humidity</p><h3>💧 ${currentField.humidity}%</h3></div>
+                        <div class="stat-item"><p>Health</p><h3 style="color:${currentField.healthStatus==='Healthy'?'#10b981': (currentField.healthStatus==='Critical'?'#ef4444':'#f59e0b')};">🏥 ${currentField.healthStatus}</h3></div>
+                        <div class="stat-item"><p>Est. Yield (AI)</p><h3 style="color: var(--primary);">📦 ${currentField.yieldPrediction} kg</h3></div>
+                        <div class="stat-item"><p>Market Value (AI)</p><h3 style="color: #0284c7;">💰 ${currentField.marketValue || '₹0'}</h3></div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- Left: Daily Input -->
+                    <div class="glass-card" style="padding: 20px;">
+                        <h3 class="section-title">📊 Add Daily Data</h3>
+                        <form id="dailyDataForm">
+                            <div class="form-group"><label>Date</label><input type="date" id="dDate" class="form-control" required value="${new Date().toISOString().split('T')[0]}"></div>
+                            <div class="form-group"><label>Temperature (°C)</label><input type="number" id="dTemp" class="form-control" required value="${currentField.temperature}"></div>
+                            <div class="form-group"><label>Humidity (%)</label><input type="number" id="dHum" class="form-control" required value="${currentField.humidity}"></div>
+                            <div class="form-group"><label>Soil Moisture</label>
+                                <select id="dSoil" class="form-control">
+                                    <option value="low" ${currentField.soilMoisture==='low'?'selected':''}>Low</option>
+                                    <option value="medium" ${currentField.soilMoisture==='medium'?'selected':''}>Medium</option>
+                                    <option value="high" ${currentField.soilMoisture==='high'?'selected':''}>High</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn-submit">Save Log</button>
+                        </form>
+                        <h3 class="section-title" style="margin-top:20px;">🗓️ Recent Logs</h3>
+                        <table class="history-table"><tbody>${historyRows}</tbody></table>
+                    </div>
+
+                    <!-- Center: Charts & AI Deep Analysis -->
+                    <div>
+                        <div class="glass-card" style="margin-bottom: 25px; padding: 20px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                                <h3 style="font-size: 1.1rem;">Progression Trends</h3>
+                                <button class="btn-action" style="padding: 8px 15px; font-size:0.85rem;" onclick="fetchGeminiAnalysis()">🧠 AI Analysis</button>
+                            </div>
+                            <div class="chart-box"><canvas id="progressionChart"></canvas></div>
+                        </div>
+                        <div class="ai-insight" id="aiInsightBox" style="display: none;">
+                            <h3>✨ Deep Analysis</h3>
+                            <div id="aiContent">Loading advanced AI insights...</div>
+                        </div>
+                    </div>
+
+                    <!-- Right: AI Scheduler Tracker -->
+                    <div class="glass-card" style="padding: 20px; background: #f8fafc;">
+                        <h3 class="section-title" style="color:#0284c7; border-color:#bae6fd;">📅 AI Scheduler & Planner</h3>
+                        ${tasksHtml}
+                    </div>
+                </div>
+            `;
+            document.getElementById('mainContent').innerHTML = html;
+            renderChart();
+
+            document.getElementById('dailyDataForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const btn = e.target.querySelector('button');
+                const originalText = btn.textContent;
+                btn.textContent = "AI Analyzing & Saving...";
+                btn.disabled = true;
+
+                const payload = {
+                    date: document.getElementById('dDate').value,
+                    temperature: parseFloat(document.getElementById('dTemp').value),
+                    humidity: parseFloat(document.getElementById('dHum').value),
+                    soilMoisture: document.getElementById('dSoil').value
+                };
+                
+                try {
+                    const res = await fetch(`${API_BASE}/fields/${currentField._id}/history`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                    if(res.ok) { currentField = await res.json(); renderUI(); }
+                    else { alert("Error saving daily data."); btn.textContent = originalText; btn.disabled = false; }
+                } catch(err) {
+                    console.error(err);
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }
+            });
+
+            // Auto-fetch real-time weather from Open-Meteo
+            fetchLiveWeatherForForm();
+        }
+
+        async function fetchLiveWeatherForForm() {
+            if(!currentField || !currentField.location) return;
+            const btn = document.querySelector('#dailyDataForm button');
+            if(!btn) return;
+            
+            try {
+                const lat = currentField.location.lat || 28.6139;
+                const lng = currentField.location.lng || 77.2090;
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m`);
+                const data = await res.json();
+                
+                const tempInput = document.getElementById('dTemp');
+                const humInput = document.getElementById('dHum');
+                if(tempInput) tempInput.value = Math.round(data.current.temperature_2m);
+                if(humInput) humInput.value = Math.round(data.current.relative_humidity_2m);
+                
+                // Add a small badge next to the form title
+                const formTitle = document.querySelector('.glass-card h3.section-title');
+                if(formTitle && formTitle.innerText.includes('Add Daily Data')) {
+                    formTitle.innerHTML = `📊 Add Daily Data <span style="font-size:0.75rem; background:#dcfce7; color:#15803d; padding:3px 8px; border-radius:10px; margin-left:10px; font-weight:600;">☁️ Auto-filled via Weather API</span>`;
+                }
+            } catch(e) {
+                console.log("Weather auto-fill failed.", e);
+            }
+        }
+
+        async function toggleTask(taskId) {
+            const res = await fetch(`${API_BASE}/fields/${currentField._id}/tasks/${taskId}`, { method: 'PUT' });
+            if (res.ok) { currentField = await res.json(); renderUI(); }
+        }
+
+        async function generatePlan(btn) {
+            btn.innerHTML = "Generating...";
+            try {
+                const res = await fetch(`${API_BASE}/fields/${currentField._id}/generate-plan`, { method: 'POST' });
+                const data = await res.json();
+                if (data.error) alert("Error: " + data.error);
+                else { currentField = data; renderUI(); }
+            } catch(e) { alert("Failed to generate plan."); }
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('progressionChart').getContext('2d');
+            let labels = [], tempData = [], humData = [];
+            if (currentField.history && currentField.history.length > 0) {
+                const chartHist = currentField.history.slice(-15);
+                labels = chartHist.map(h => new Date(h.date).toLocaleDateString(undefined, {month:'short', day:'numeric'}));
+                tempData = chartHist.map(h => h.temperature);
+                humData = chartHist.map(h => h.humidity);
+            } else { labels = ['Start']; tempData = [currentField.temperature]; humData = [currentField.humidity]; }
+
+            if(chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: labels, datasets: [
+                    { label: 'Temp (°C)', data: tempData, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', fill: true, tension: 0.4 },
+                    { label: 'Hum (%)', data: humData, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.4 }
+                ]},
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        async function fetchGeminiAnalysis() {
+            const box = document.getElementById('aiInsightBox');
+            const content = document.getElementById('aiContent');
+            box.style.display = 'block'; box.scrollIntoView({ behavior: 'smooth' });
+            content.innerHTML = "<em>Analyzing daily trends...</em>";
+            try {
+                const res = await fetch(`${API_BASE}/ai/chat`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contextId: currentField._id, message: "What is the crop condition prediction? Deep analysis please." })
+                });
+                const data = await res.json();
+                content.innerHTML = typeof marked !== 'undefined' ? marked.parse(data.reply) : data.reply;
+            } catch (err) { content.innerHTML = `<span style="color:red">⚠️ Error: ${err.message}</span>`; }
+        }
+
+        window.onload = initFieldData;
+    </script>
+    <script src="global-alerts.js"></script>
+</body>
+</html>

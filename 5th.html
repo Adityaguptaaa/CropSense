@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satellite NDVI & AI Advisor - CropSense</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --bg-body: #f8fafc;
+            --bg-card: rgba(255, 255, 255, 0.95);
+            --primary: #10b981;
+            --primary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --secondary: #3b82f6;
+            --secondary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 50px;
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        }
+
+        .logo { font-size: 1.5rem; font-weight: 700; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-links { display: flex; gap: 30px; }
+        .nav-links a { text-decoration: none; color: var(--text-muted); font-weight: 500; padding: 8px 12px; border-radius: 8px; transition: 0.3s; }
+        .nav-links a.active { color: var(--primary); background: rgba(16, 185, 129, 0.1); }
+
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 25px;
+            animation: fadeIn 0.6s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .glass-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section-title { font-size: 1.2rem; color: var(--secondary); font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        
+        /* Map Area */
+        #map { width: 100%; height: 450px; border-radius: 15px; z-index: 1; margin-bottom: 20px; border: 1px solid var(--border-color); }
+
+        /* Simulation Controls */
+        .simulation-panel {
+            background: #f1f5f9;
+            border-radius: 15px;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .slider-group { display: flex; flex-direction: column; gap: 8px; }
+        .slider-group label { font-size: 0.9rem; font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; }
+        .slider-group input[type="range"] {
+            width: 100%; accent-color: var(--secondary);
+            cursor: pointer;
+        }
+
+        /* AI Insights Panel */
+        .insight-section { margin-bottom: 25px; }
+        .insight-title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+        
+        .alert-box {
+            background: #fee2e2;
+            color: #b91c1c;
+            padding: 12px 15px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: start;
+            gap: 10px;
+            border-left: 4px solid #ef4444;
+            animation: pulseAlert 2s infinite alternate;
+        }
+        @keyframes pulseAlert { from { box-shadow: 0 0 0 rgba(239, 68, 68, 0); } to { box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); } }
+        
+        .alert-box.good { background: #dcfce7; color: #15803d; border-left-color: #10b981; animation: none; }
+
+        .trend-text { font-size: 1.1rem; font-weight: 500; color: var(--text-main); line-height: 1.5; }
+        .yield-val { font-size: 2.2rem; font-weight: 700; color: var(--primary); letter-spacing: -1px; }
+
+        /* Confidence Meter */
+        .meter-bg { width: 100%; height: 12px; background: #e2e8f0; border-radius: 10px; overflow: hidden; margin-top: 5px; }
+        .meter-fill { height: 100%; background: var(--secondary-gradient); border-radius: 10px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); width: 0%; }
+        
+        .ai-loading {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.8); backdrop-filter: blur(4px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 10; border-radius: 20px; font-weight: 500; color: var(--secondary);
+            opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+        .ai-loading.active { opacity: 1; pointer-events: all; }
+        
+        /* Map overlay stress animation */
+        .stress-pulse { animation: mapPulse 2s infinite alternate; }
+        @keyframes mapPulse { from { fill-opacity: 0.4; } to { fill-opacity: 0.7; } }
+        
+        .field-tooltip {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="1st.html" class="logo" style="text-decoration:none;">🌾 CropSense</a>
+        <div class="nav-links">
+            <a href="1st.html">Dashboard</a>
+            <a href="2nd.html">Field Analysis</a>
+            <a href="3rd.html">Manage Fields</a>
+            <a href="4th.html">History</a>
+            <a href="5th.html" class="active">Satellite AI</a>
+            <a href="6th.html">Plant Doctor</a>
+            <a href="7th.html">Market AI</a>
+            <a href="8th.html">Community Hub</a>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center; position: relative;">
+            <a href="1st.html" style="text-decoration:none; width: 35px; height: 35px; border-radius: 50%; background: #e2e8f0; display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative;">
+                🔔
+            </a>
+            <div style="width: 35px; height: 35px; border-radius: 50%; background: var(--primary-gradient); color: white; display: flex; justify-content: center; align-items: center; font-weight: bold;">AD</div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Left: Map & Simulator -->
+        <div class="glass-card">
+            <h3 class="section-title" id="mapTitle">🛰️ Real-Time NDVI Satellite Tracker</h3>
+            <select id="fieldDropdown" onchange="handleDropdownChange()" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 1rem; color: var(--secondary); outline: none; background: #f8fafc; font-weight: 500;">
+                <option value="">Loading your fields...</option>
+            </select>
+            <div id="map"></div>
+
+            <h3 class="section-title" style="margin-top:10px;">🌤️ Live Environmental Conditions (API Fetched)</h3>
+            <div class="simulation-panel">
+                <div class="slider-group">
+                    <label>Temperature <span id="tempVal">28°C</span></label>
+                    <input type="range" id="simTemp" min="10" max="50" value="28" disabled style="opacity: 0.8; cursor: not-allowed;">
+                </div>
+                <div class="slider-group">
+                    <label>Water Level / Humidity <span id="waterVal">60%</span></label>
+                    <input type="range" id="simWater" min="0" max="100" value="60" disabled style="opacity: 0.8; cursor: not-allowed;">
+                </div>
+                <div class="slider-group">
+                    <label>Rainfall Expected <span id="rainVal">15 mm</span></label>
+                    <input type="range" id="simRain" min="0" max="200" value="15" disabled style="opacity: 0.8; cursor: not-allowed;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: AI Insights -->
+        <div class="glass-card" style="display: flex; flex-direction: column;">
+            <div class="ai-loading" id="aiLoader">
+                <div style="font-size: 2rem; margin-bottom: 10px;">🧠</div>
+                Generating Deep Insights...
+            </div>
+
+            <h3 class="section-title" style="color:var(--primary);">✨ Gemini AI Insights</h3>
+            
+            <div class="insight-section">
+                <div class="insight-title">Automatic Alerts</div>
+                <div id="alertsContainer">
+                    <div class="alert-box good">✅ Conditions optimal. No immediate threats detected.</div>
+                </div>
+            </div>
+
+            <div class="insight-section">
+                <div class="insight-title">Growth Trend Analysis</div>
+                <div class="trend-text" id="trendText">Vegetative growth is proceeding normally under current conditions. Photosynthetic activity is high.</div>
+            </div>
+
+            <div class="insight-section">
+                <div class="insight-title">Dynamic Yield Prediction</div>
+                <div class="yield-val" id="yieldText">5,200 kg</div>
+            </div>
+
+            <div class="insight-section" style="margin-top: auto;">
+                <div class="insight-title" style="display: flex; justify-content: space-between;">
+                    <span>AI Confidence Meter</span>
+                    <span id="confidenceVal">92%</span>
+                </div>
+                <div class="meter-bg">
+                    <div class="meter-fill" id="confidenceFill" style="width: 92%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Leaflet Map Init
+        const map = L.map('map').setView([20.5937, 78.9629], 5); // Default to India Center
+        
+        // Satellite layer
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Place Names / Labels Layer overlay to show city and street names on top of satellite
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            pane: 'markerPane' // ensure labels are above satellite but below our custom popups
+        }).addTo(map);
+
+        let fieldPolygon = null;
+        let simTimeout;
+        let fieldData = null;
+
+        let allPolygons = [];
+        let allFields = [];
+
+        async function fetchInitialField() {
+            try {
+                const res = await fetch('http://localhost:5000/api/fields');
+                allFields = await res.json();
+                
+                if (allFields && allFields.length > 0) {
+                    const group = L.featureGroup().addTo(map);
+                    const dropdown = document.getElementById('fieldDropdown');
+                    dropdown.innerHTML = '';
+
+                    allFields.forEach((field, index) => {
+                        const lat = (field.location && field.location.lat) ? field.location.lat : 28.6139 + (index * 0.01);
+                        const lng = (field.location && field.location.lng) ? field.location.lng : 77.2090 + (index * 0.01);
+                        
+                        const offset = 0.002;
+                        const farmCoords = [
+                            [lat + offset, lng - offset],
+                            [lat + offset, lng + offset],
+                            [lat - offset, lng + offset],
+                            [lat - offset, lng - offset]
+                        ];
+                        
+                        const poly = L.polygon(farmCoords, {
+                            color: '#10b981', fillColor: '#10b981', fillOpacity: 0.5, weight: 2
+                        });
+                        
+                        poly.bindTooltip(`<div style="text-align:center; font-weight:700; color:var(--primary);">${field.name}</div><div style="font-size:0.8rem; text-align:center;">${field.cropType.toUpperCase()}</div>`, { permanent: true, direction: 'center', className: 'field-tooltip' });
+                        poly.on('click', () => {
+                            dropdown.value = index;
+                            selectField(field, poly);
+                        });
+                        
+                        group.addLayer(poly);
+                        allPolygons.push(poly);
+                        
+                        dropdown.innerHTML += `<option value="${index}">${field.name} - ${field.cropType.toUpperCase()}</option>`;
+                    });
+                    
+                    map.fitBounds(group.getBounds(), { padding: [50, 50] });
+
+                    // Auto-select the first one
+                    dropdown.value = 0;
+                    selectField(allFields[0], allPolygons[0]);
+                } else {
+                    document.getElementById('fieldDropdown').innerHTML = '<option value="">No fields registered</option>';
+                    triggerAIAnalysis();
+                }
+            } catch(e) { console.error("Field load error"); triggerAIAnalysis(); }
+        }
+
+        function handleDropdownChange() {
+            const idx = document.getElementById('fieldDropdown').value;
+            if(idx !== "") {
+                const field = allFields[idx];
+                const poly = allPolygons[idx];
+                selectField(field, poly);
+                map.flyToBounds(poly.getBounds(), { padding: [50, 50], duration: 1.5 });
+            }
+        }
+
+        async function selectField(field, poly) {
+            fieldData = field;
+            fieldPolygon = poly;
+
+            // Reset all to default green
+            allPolygons.forEach(p => {
+                p.setStyle({ color: '#10b981', fillColor: '#10b981' });
+                if(p.getElement()) p.getElement().classList.remove('stress-pulse');
+            });
+            
+            // Highlight active one briefly
+            poly.setStyle({ color: '#3b82f6', fillColor: '#3b82f6' });
+
+            document.getElementById('mapTitle').innerHTML = `🛰️ Real-Time NDVI Satellite Tracker - <span style="color:var(--text-main); font-weight:700;">${field.name} (${field.cropType.toUpperCase()})</span>`;
+
+            const lat = (field.location && field.location.lat) ? field.location.lat : 28.6139;
+            const lng = (field.location && field.location.lng) ? field.location.lng : 77.2090;
+
+            try {
+                // Using Open-Meteo Free API for 100% accurate meteorological data
+                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation`);
+                const weatherData = await weatherRes.json();
+                
+                const currentTemp = Math.round(weatherData.current.temperature_2m);
+                const currentHum = Math.round(weatherData.current.relative_humidity_2m);
+                const currentRain = Math.round(weatherData.current.precipitation);
+
+                document.getElementById('simTemp').value = currentTemp;
+                document.getElementById('simWater').value = currentHum;
+                document.getElementById('simRain').value = currentRain;
+                
+                // Save this Real-Time Weather globally to the Database so all pages use it!
+                fetch(`http://localhost:5000/api/fields/${field._id}/environment`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ temperature: currentTemp, humidity: currentHum })
+                }).catch(e => console.log("Failed to save global environment", e));
+
+            } catch(e) {
+                document.getElementById('simTemp').value = field.temperature || 28;
+                document.getElementById('simWater').value = field.humidity || 60;
+            }
+            
+            updateSimLabels();
+            updateSim(); // Apply NDVI logic to active polygon and call Gemini Insights
+        }
+
+        function updateSimLabels() {
+            document.getElementById('tempVal').innerText = document.getElementById('simTemp').value + '°C';
+            document.getElementById('waterVal').innerText = document.getElementById('simWater').value + '%';
+            document.getElementById('rainVal').innerText = document.getElementById('simRain').value + ' mm';
+        }
+
+        function updateSim() {
+            updateSimLabels();
+            
+            // Visual Map Update immediately
+            const temp = parseInt(document.getElementById('simTemp').value);
+            const water = parseInt(document.getElementById('simWater').value);
+            
+            // Logic for NDVI Color:
+            let color = '#10b981'; // Green
+            if(fieldPolygon) {
+                if(fieldPolygon.getElement()) fieldPolygon.getElement().classList.remove('stress-pulse');
+
+                if (temp > 40 || water < 20) {
+                    color = '#ef4444'; // Red
+                    if(fieldPolygon.getElement()) fieldPolygon.getElement().classList.add('stress-pulse');
+                } else if (temp > 35 || water < 40) {
+                    color = '#f59e0b'; // Yellow
+                }
+                
+                fieldPolygon.setStyle({ color: color, fillColor: color });
+            }
+
+            // Debounce AI Call and DB Update
+            clearTimeout(simTimeout);
+            simTimeout = setTimeout(() => {
+                triggerAIAnalysis();
+                
+                // Save simulated environment to MongoDB
+                if(fieldData && fieldData._id) {
+                    fetch(`http://localhost:5000/api/fields/${fieldData._id}/environment`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ temperature: temp, humidity: water })
+                    }).catch(e => console.log("Failed to save sim env", e));
+                }
+            }, 1000);
+        }
+
+        // --- GLOBAL WEATHER PROBE FEATURE ---
+        // Allow user to click ANYWHERE on the map to check weather!
+        let probeMarker = null;
+        map.on('click', async function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            
+            if(probeMarker) map.removeLayer(probeMarker);
+            
+            probeMarker = L.marker([lat, lng]).addTo(map);
+            probeMarker.bindPopup('<div style="text-align:center;"><b>Fetching Live Weather...</b><br>⏳</div>').openPopup();
+
+            try {
+                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation`);
+                const weatherData = await weatherRes.json();
+                
+                const t = Math.round(weatherData.current.temperature_2m);
+                const h = Math.round(weatherData.current.relative_humidity_2m);
+                const r = Math.round(weatherData.current.precipitation);
+                
+                probeMarker.setPopupContent(`
+                    <div style="text-align:center; min-width: 120px;">
+                        <h4 style="margin:0 0 5px 0; color:var(--primary);">📍 Location Data</h4>
+                        <div style="font-size:1.2rem; font-weight:bold;">🌡️ ${t}°C</div>
+                        <div style="color:var(--text-muted);">💧 Humidity: ${h}%</div>
+                        <div style="color:var(--text-muted);">🌧️ Rain: ${r}mm</div>
+                    </div>
+                `);
+            } catch(err) {
+                probeMarker.setPopupContent('<b>Error fetching data</b>');
+            }
+        });
+        // -------------------------------------
+
+        async function triggerAIAnalysis() {
+            document.getElementById('aiLoader').classList.add('active');
+            
+            const payload = {
+                temp: document.getElementById('simTemp').value,
+                water: document.getElementById('simWater').value,
+                rain: document.getElementById('simRain').value,
+                fieldData: fieldData
+            };
+
+            try {
+                const res = await fetch('http://localhost:5000/api/ai/ndvi-insights', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const insights = await res.json();
+                renderInsights(insights);
+            } catch (err) {
+                console.error("AI Fetch Error", err);
+            } finally {
+                document.getElementById('aiLoader').classList.remove('active');
+            }
+        }
+
+        function renderInsights(data) {
+            // Alerts
+            let alertHtml = '';
+            if (data.alerts && data.alerts.length > 0) {
+                data.alerts.forEach(a => {
+                    const isGood = a.toLowerCase().includes('optimal') || a.toLowerCase().includes('good') || a.toLowerCase().includes('normal');
+                    alertHtml += `<div class="alert-box ${isGood ? 'good' : ''}">${isGood ? '✅' : '⚠️'} ${a}</div>`;
+                });
+            } else {
+                alertHtml = `<div class="alert-box good">✅ Conditions optimal.</div>`;
+            }
+            document.getElementById('alertsContainer').innerHTML = alertHtml;
+
+            // Trends & Yield
+            document.getElementById('trendText').innerText = data.growthTrend || "No trend available.";
+            document.getElementById('yieldText').innerText = data.yieldPrediction || "N/A";
+            
+            // Confidence
+            const conf = data.confidence || 0;
+            document.getElementById('confidenceVal').innerText = conf + '%';
+            document.getElementById('confidenceFill').style.width = conf + '%';
+            
+            // Change meter color based on confidence
+            if(conf > 80) document.getElementById('confidenceFill').style.background = "var(--primary-gradient)";
+            else if(conf > 50) document.getElementById('confidenceFill').style.background = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
+            else document.getElementById('confidenceFill').style.background = "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)";
+        }
+
+        // Init
+        window.onload = fetchInitialField;
+    </script>
+    <script src="global-alerts.js"></script>
+</body>
+</html>
