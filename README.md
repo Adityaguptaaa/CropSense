@@ -97,7 +97,7 @@ cropsense/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/aaadityagupta07/cropsense.git
+git clone https://github.com/Adityaguptaaa/cropsense.git
 cd cropsense
 ```
 
